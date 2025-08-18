@@ -6,7 +6,7 @@ from rdkit import Chem
 from rdkit.Chem import Draw
 import sys, pickle, os
 #backend framwork
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, redirect
 from flask_cors import CORS
 
 import torch, numpy as np
@@ -88,7 +88,12 @@ def fetch_np(smile):
         print(f"[WARNING] NPClassifier failed for {smile}: {e}")
         return {"error": "fetch_failed"}
     
-    
+@app.route('/', methods=['GET','OPTIONS'])
+def homepage():
+    # redirect to /index.html
+    return redirect("/index.html")
+
+
 @app.route('/api/hello', methods=['GET','OPTIONS'])
 def hello():
     return build_actual_response(jsonify({'retrievals': "hello"}))
