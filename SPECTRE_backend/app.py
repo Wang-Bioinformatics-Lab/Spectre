@@ -6,7 +6,7 @@ from rdkit import Chem
 from rdkit.Chem import Draw
 import sys, pickle, os
 #backend framwork
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, redirect
 from flask_cors import CORS
 
 import torch, numpy as np
@@ -30,7 +30,7 @@ from flask_utils import build_actual_response
 from inference.inference_utils import inference_topK, get_inputs_and_indicators_from_NMR_tensors
 
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder="/app/static", static_url_path="")
 CORS(app)
 
 from flask import Response
@@ -88,7 +88,12 @@ def fetch_np(smile):
         print(f"[WARNING] NPClassifier failed for {smile}: {e}")
         return {"error": "fetch_failed"}
     
-    
+@app.route('/', methods=['GET','OPTIONS'])
+def homepage():
+    # redirect to /index.html
+    return redirect("/index.html")
+
+
 @app.route('/api/hello', methods=['GET','OPTIONS'])
 def hello():
     return build_actual_response(jsonify({'retrievals': "hello"}))
@@ -202,7 +207,10 @@ def search_retrievals():
   
     SMILES = data['SMILES']
     k = data['k_samples']
-    FP = fp_loader.build_mfp_for_new_SMILES(SMILES).unsqueeze(0).to("cuda")
+    try:
+        FP = fp_loader.build_mfp_for_new_SMILES(SMILES).unsqueeze(0).to("cuda")
+    except:
+        FP = fp_loader.build_mfp_for_new_SMILES(SMILES).unsqueeze(0).to("cpu")
     topk = retrieve_top_k_by_rankingset(rankingset_data, FP, smiles_and_names, k=k)
     returning_smiles, returning_names, returning_imgs, returning_MWs, returning_values = return_infos_from_topk(topk, FP)
     
@@ -247,7 +255,10 @@ if __name__ == '__main__':
     # step 2: load rankingset
     smiles_and_names = pickle.load(open(f'{root_path}/inference/inference_metadata_name_updated.pkl', 'rb'))
     rankingset_path = f'{root_path}/inference/non_collision_FP_rankingset_r6_dim_16384/FP.pt'
-    rankingset_data = torch.load(rankingset_path).to("cuda")
+    try:
+        rankingset_data = torch.load(rankingset_path).to("cuda")
+    except:
+        rankingset_data = torch.load(rankingset_path, map_location="cpu")
     # smiles_to_NMR_path = pickle.load(open(f'{root_path}/inference/SMILES_chemical_to_NMR_paths.pkl','rb'))
 
     print("starting server")
